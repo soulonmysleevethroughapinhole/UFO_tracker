@@ -24,6 +24,7 @@ const (
 	AttrKeyRecvOnly        = "recvonly"
 	AttrKeySendOnly        = "sendonly"
 	AttrKeySendRecv        = "sendrecv"
+	AttrKeyExtMap          = "extmap"
 )
 
 // Constants for semantic tokens used in JSEP
@@ -136,6 +137,11 @@ func (d *MediaDescription) WithPropertyAttribute(key string) *MediaDescription {
 func (d *MediaDescription) WithValueAttribute(key, value string) *MediaDescription {
 	d.Attributes = append(d.Attributes, NewAttribute(key, value))
 	return d
+}
+
+// WithFingerprint adds a fingerprint to the media description
+func (d *MediaDescription) WithFingerprint(algorithm, value string) *MediaDescription {
+	return d.WithValueAttribute("fingerprint", algorithm+" "+value)
 }
 
 // WithICECredentials adds ICE credentials to the media description

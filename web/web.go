@@ -10,7 +10,6 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
-	"sort"
 	"sync"
 	"time"
 
@@ -114,12 +113,12 @@ func NewWebInterface(router *chi.Mux, path string) *WebInterface {
 	//getting the sdp is stateless, people can keep the connection even if they are not in the chit chat room
 	router.Post(regPath, func(wr http.ResponseWriter, r *http.Request) {
 
-		log.Println(regPath)
+		//log.Println(regPath)
 
 		body, _ := ioutil.ReadAll(r.Body)
 		sdpChan <- string(body)
 
-		log.Println(w.NumOfPeers)
+		//log.Println(w.NumOfPeers)
 
 		answer := <-answerChan
 		fmt.Fprint(wr, string(answer))
@@ -198,6 +197,7 @@ func NewWebInterface(router *chi.Mux, path string) *WebInterface {
 			panic(err)
 		}
 
+		log.Println("answer sent to first peer")
 		answerChan <- []byte(EncodeBase64(answer))
 
 		localTrack := <-localTrackChan
@@ -233,7 +233,7 @@ func NewWebInterface(router *chi.Mux, path string) *WebInterface {
 			}
 
 			//man I totally forgot how this works
-			log.Println("This should be seen after first only")
+			log.Printf("\nanswer sent to %d peer", w.NumOfPeers)
 			answerChan <- []byte(EncodeBase64(answer))
 		}
 	}()
@@ -241,128 +241,128 @@ func NewWebInterface(router *chi.Mux, path string) *WebInterface {
 	return &w
 }
 
-func (w *WebInterface) createChannels() {
-	w.ChannelsLock.Lock()
-	defer w.ChannelsLock.Unlock()
+// func (w *WebInterface) createChannels() {
+// 	w.ChannelsLock.Lock()
+// 	defer w.ChannelsLock.Unlock()
 
-	// TODO Load channels from database
-}
+// 	// TODO Load channels from database
+// }
 
-func (w *WebInterface) AddChannel(name string, topic string) {
-	w.ChannelsLock.Lock()
-	defer w.ChannelsLock.Unlock()
+// func (w *WebInterface) AddChannel(name string, topic string) {
+// 	w.ChannelsLock.Lock()
+// 	defer w.ChannelsLock.Unlock()
 
-	//ch := agent.NewChannel(w.nextChannelID(), t)
-	ch := agent.NewChannel(w.nextChannelID())
-	ch.Name = name
-	ch.Topic = topic
+// 	//ch := agent.NewChannel(w.nextChannelID(), t)
+// 	ch := agent.NewChannel(w.nextChannelID())
+// 	ch.Name = name
+// 	ch.Topic = topic
 
-	w.Channels[ch.ID] = ch
-}
+// 	w.Channels[ch.ID] = ch
+// }
 
-func (w *WebInterface) nextChannelID() int {
-	id := 0
-	for cid := range w.Channels {
-		if cid > id {
-			id = cid
-		}
-	}
+// func (w *WebInterface) nextChannelID() int {
+// 	id := 0
+// 	for cid := range w.Channels {
+// 		if cid > id {
+// 			id = cid
+// 		}
+// 	}
 
-	return id + 1
-}
+// 	return id + 1
+// }
 
-/*yeah no idea anymore on what is happening*/
-//func (w *WebInterface) MessageRequestSDP(offerSDP []byte) ([]byte, error) {
+// /*yeah no idea anymore on what is happening*/
+// //func (w *WebInterface) MessageRequestSDP(offerSDP []byte) ([]byte, error) {
 
-func (w *WebInterface) nextClientID() int {
-	id := 1
-	for {
-		if _, ok := w.Clients[id]; !ok {
-			break
-		}
+// func (w *WebInterface) nextClientID() int {
+// 	id := 1
+// 	for {
+// 		if _, ok := w.Clients[id]; !ok {
+// 			break
+// 		}
 
-		id++
-	}
-	return id
-}
+// 		id++
+// 	}
+// 	return id
+// }
 
-func (w *WebInterface) sendChannelList(c *agent.Client) {
-	var channelList agent.ChannelList
+// func (w *WebInterface) sendChannelList(c *agent.Client) {
+// 	var channelList agent.ChannelList
 
-	for _, ch := range w.Channels {
-		channelList = append(channelList, &agent.ChannelListing{ID: ch.ID, Type: ch.Type, Name: ch.Name, Topic: ch.Topic})
-	}
+// 	for _, ch := range w.Channels {
+// 		channelList = append(channelList, &agent.ChannelListing{ID: ch.ID, Type: ch.Type, Name: ch.Name, Topic: ch.Topic})
+// 	}
 
-	//probably useless
-	sort.Sort(channelList)
+// 	//probably useless
+// 	sort.Sort(channelList)
 
-	msg := agent.Message{T: agent.MessageChannels}
+// 	msg := agent.Message{T: agent.MessageChannels}
 
-	var err error
-	msg.M, err = json.Marshal(channelList)
-	if err != nil {
-		log.Fatal("failed to marshal ch list : ", err)
-	}
+// 	var err error
+// 	msg.M, err = json.Marshal(channelList)
+// 	if err != nil {
+// 		log.Fatal("failed to marshal ch list : ", err)
+// 	}
 
-	c.Out <- &msg
-}
+// 	c.Out <- &msg
+// }
 
-func (w *WebInterface) updateUserList() {
-	w.ClientsLock.Lock()
+// func (w *WebInterface) updateUserList() {
+// 	w.ClientsLock.Lock()
 
-	msg := &agent.Message{T: agent.MessageUsers}
+// 	msg := &agent.Message{T: agent.MessageUsers}
 
-	var userList agent.UserList
-	for _, wc := range w.Clients {
-		c := 0
-		if wc.Channel != nil {
-			c = wc.Channel.ID
-		}
+// 	var userList agent.UserList
+// 	for _, wc := range w.Clients {
+// 		c := 0
+// 		if wc.Channel != nil {
+// 			c = wc.Channel.ID
+// 		}
 
-		userList = append(userList, &agent.User{ID: wc.ID, N: wc.Name, C: c})
-	}
+// 		userList = append(userList, &agent.User{ID: wc.ID, N: wc.Name, C: c})
+// 	}
 
-	sort.Sort(userList)
+// 	sort.Sort(userList)
 
-	var err error
-	msg.M, err = json.Marshal(userList)
-	if err != nil {
-		log.Fatal("failed to marshal user list: ", err)
-	}
+// 	var err error
+// 	msg.M, err = json.Marshal(userList)
+// 	if err != nil {
+// 		log.Fatal("failed to marshal user list: ", err)
+// 	}
 
-	for _, wc := range w.Clients {
-		wc.Out <- msg
-	}
+// 	for _, wc := range w.Clients {
+// 		wc.Out <- msg
+// 	}
 
-	w.ClientsLock.Unlock()
-}
+// 	w.ClientsLock.Unlock()
+// }
 
-func (w *WebInterface) quitChannel(c *agent.Client) {
-	if c.Channel == nil {
-		return
-	}
+// func (w *WebInterface) quitChannel(c *agent.Client) {
+// 	if c.Channel == nil {
+// 		return
+// 	}
 
-	ch := c.Channel
+// 	ch := c.Channel
 
-	w.ClientsLock.Lock()
-	ch.Lock()
+// 	w.ClientsLock.Lock()
+// 	ch.Lock()
 
-	for _, wc := range ch.Clients {
-		if len(wc.AudioOut.Tracks) == 0 && wc.ID != c.ID {
-			continue
-		}
+// 	for _, wc := range ch.Clients {
+// 		if len(wc.AudioOut.Tracks) == 0 && wc.ID != c.ID {
+// 			continue
+// 		}
 
-		wc.Out <- &agent.Message{T: agent.MessageQuit, N: c.Name, C: ch.ID}
-	}
+// 		wc.Out <- &agent.Message{T: agent.MessageQuit, N: c.Name, C: ch.ID}
+// 	}
 
-	delete(ch.Clients, c.ID)
-	c.Channel = nil
+// 	delete(ch.Clients, c.ID)
+// 	c.Channel = nil
 
-	ch.Unlock()
-	w.ClientsLock.Unlock()
+// 	ch.Unlock()
+// 	w.ClientsLock.Unlock()
 
-	w.updateUserList()
-}
+// 	w.updateUserList()
+// }
 
 func DecodeBase64(in string, obj interface{}) {
 	b, err := base64.StdEncoding.DecodeString(in)

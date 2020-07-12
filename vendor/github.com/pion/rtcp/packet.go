@@ -49,7 +49,6 @@ func Marshal(packets []Packet) ([]byte, error) {
 		out = append(out, data...)
 	}
 	return out, nil
-
 }
 
 // unmarshal is a factory which pulls the first RTCP packet from a bytestream,
@@ -87,6 +86,8 @@ func unmarshal(rawData []byte) (packet Packet, bytesprocessed int, err error) {
 			packet = new(TransportLayerNack)
 		case FormatRRR:
 			packet = new(RapidResynchronizationRequest)
+		case FormatTCC:
+			packet = new(TransportLayerCC)
 		default:
 			packet = new(RawPacket)
 		}
@@ -99,6 +100,8 @@ func unmarshal(rawData []byte) (packet Packet, bytesprocessed int, err error) {
 			packet = new(SliceLossIndication)
 		case FormatREMB:
 			packet = new(ReceiverEstimatedMaximumBitrate)
+		case FormatFIR:
+			packet = new(FullIntraRequest)
 		default:
 			packet = new(RawPacket)
 		}

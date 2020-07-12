@@ -137,7 +137,7 @@ func main() {
 				iw.ServersLock.Lock()
 				defer iw.ServersLock.Unlock()
 
-				w.AddChannel(newServerName, newServerDescription)
+				//w.AddChannel(newServerName, newServerDescription)
 				w.Description = newServerDescription
 
 				iw.Servers[newServerName] = w //TODO: ability to remove from map

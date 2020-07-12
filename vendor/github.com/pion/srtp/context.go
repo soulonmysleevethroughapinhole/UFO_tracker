@@ -293,25 +293,33 @@ func (c *Context) generateSrtcpAuthTag(buf []byte) ([]byte, error) {
 }
 
 // https://tools.ietf.org/html/rfc3550#appendix-A.1
-func (c *Context) updateRolloverCount(sequenceNumber uint16, s *srtpSSRCState) {
-	if !s.rolloverHasProcessed {
-		s.rolloverHasProcessed = true
-	} else if sequenceNumber == 0 { // We exactly hit the rollover count
+func (s *srtpSSRCState) nextRolloverCount(sequenceNumber uint16) (uint32, func()) {
+	roc := s.rolloverCounter
+
+	switch {
+	case !s.rolloverHasProcessed:
+	case sequenceNumber == 0: // We exactly hit the rollover count
 		// Only update rolloverCounter if lastSequenceNumber is greater then maxROCDisorder
 		// otherwise we already incremented for disorder
 		if s.lastSequenceNumber > maxROCDisorder {
-			s.rolloverCounter++
+			roc++
 		}
-	} else if s.lastSequenceNumber < maxROCDisorder && sequenceNumber > (maxSequenceNumber-maxROCDisorder) {
+	case s.lastSequenceNumber < maxROCDisorder &&
+		sequenceNumber > (maxSequenceNumber-maxROCDisorder):
 		// Our last sequence number incremented because we crossed 0, but then our current number was within maxROCDisorder of the max
 		// So we fell behind, drop to account for jitter
-		s.rolloverCounter--
-	} else if sequenceNumber < maxROCDisorder && s.lastSequenceNumber > (maxSequenceNumber-maxROCDisorder) {
+		roc--
+	case sequenceNumber < maxROCDisorder &&
+		s.lastSequenceNumber > (maxSequenceNumber-maxROCDisorder):
 		// our current is within a maxROCDisorder of 0
 		// and our last sequence number was a high sequence number, increment to account for jitter
-		s.rolloverCounter++
+		roc++
 	}
-	s.lastSequenceNumber = sequenceNumber
+	return roc, func() {
+		s.rolloverHasProcessed = true
+		s.lastSequenceNumber = sequenceNumber
+		s.rolloverCounter = roc
+	}
 }
 
 func (c *Context) getSRTPSSRCState(ssrc uint32) *srtpSSRCState {
@@ -340,4 +348,34 @@ func (c *Context) getSRTCPSSRCState(ssrc uint32) *srtcpSSRCState {
 	}
 	c.srtcpSSRCStates[ssrc] = s
 	return s
+}
+
+// ROC returns SRTP rollover counter value of specified SSRC.
+func (c *Context) ROC(ssrc uint32) (uint32, bool) {
+	s, ok := c.srtpSSRCStates[ssrc]
+	if !ok {
+		return 0, false
+	}
+	return s.rolloverCounter, true
+}
+
+// SetROC sets SRTP rollover counter value of specified SSRC.
+func (c *Context) SetROC(ssrc uint32, roc uint32) {
+	s := c.getSRTPSSRCState(ssrc)
+	s.rolloverCounter = roc
+}
+
+// Index returns SRTCP index value of specified SSRC.
+func (c *Context) Index(ssrc uint32) (uint32, bool) {
+	s, ok := c.srtcpSSRCStates[ssrc]
+	if !ok {
+		return 0, false
+	}
+	return s.srtcpIndex, true
+}
+
+// SetIndex sets SRTCP index value of specified SSRC.
+func (c *Context) SetIndex(ssrc uint32, index uint32) {
+	s := c.getSRTCPSSRCState(ssrc)
+	s.srtcpIndex = index % maxSRTCPIndex
 }
