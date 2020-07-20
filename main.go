@@ -59,6 +59,7 @@ func main() {
 	iw.ServersLock.Unlock()
 
 	router.Get("/api/posts/{id}", controllers.PostsController.Get)
+	router.Get("/api/posts", controllers.PostsController.GetAll)
 	router.Post("/api/posts", controllers.PostsController.Create)
 	router.Put("/api/posts", controllers.PostsController.Update)
 	router.Delete("/api/posts/{id}", controllers.PostsController.Delete)

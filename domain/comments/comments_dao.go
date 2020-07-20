@@ -1,11 +1,23 @@
+package comments
+
+import (
+	"errors"
+	"fmt"
+	"strings"
+
+	"github.com/soulonmysleevethroughapinhole/UFO_tracker/datasources/postres/conn"
+	"github.com/soulonmysleevethroughapinhole/UFO_tracker/utils/logger"
+	"github.com/soulonmysleevethroughapinhole/UFO_tracker/utils/rest_errors"
+)
+
 const (
 	errorNoRows = "no rows in result set"
 
-	queryCreateComment 		= ``
-	queryReadComment		= ``
-	queryReadAllComments  	= ``
-	queryUpdateComment 		= ``
-	queryDeleteComment 		= ``
+	queryCreateComment         = `INSERT INTO comments (username, threadid, parentid, content) VALUES ($1, $2, $3, $4) RETURNING id`
+	queryReadComment           = `SELECT username, threadid, parentid, content, postdate FROM comments WHERE id = $1`
+	queryReadAllCommentsThread = `SELECT id, username, threadid, parentid, content, postdate `
+	queryUpdateComment         = ``
+	queryDeleteComment         = ``
 )
 
 func (c *Comment) Read(commentID int64) rest_errors.RestErr {
@@ -17,7 +29,7 @@ func (c *Comment) Read(commentID int64) rest_errors.RestErr {
 	defer stmt.Close()
 
 	res := stmt.QueryRow(commentID)
-	getErr := res.Scan(&c.ID, &c.Username, &c.ThreadID, &c.ParentID, &c.Content, &c.PostDate)
+	getErr := res.Scan(&c.Username, &c.ThreadID, &c.ParentID, &c.Content, &c.PostDate)
 	if getErr != nil {
 		if strings.Contains(getErr.Error(), "404") {
 			logger.Error("error getting item - not found", getErr)
@@ -46,18 +58,19 @@ func (c *Comment) Create() rest_errors.RestErr {
 }
 
 func (c *Comment) Update() rest_errors.RestErr {
-	return nil	
+	return nil
 }
 
 func (c *Comment) ReadAll(threadID int64) (Comments, rest_errors.RestErr) {
-	stmt, err := conn.DB.Prepare(queryReadAllComments)
+	//case case case this shit
+	stmt, err := conn.DB.Prepare(queryReadAllCommentsThread)
 	if err != nil {
 		logger.Error("error preparing studio statement for item", err)
 		return nil, rest_errors.NewInternalServerError("Error searching documents", errors.New("DB error"))
 	}
 	defer stmt.Close()
 
-	rors, err := stmt.Query(threadID)
+	rows, err := stmt.Query(threadID)
 	if err != nil {
 		logger.Error("error selecting studio items", err)
 		return nil, rest_errors.NewInternalServerError("Error searching documents", errors.New("DB error"))
@@ -71,6 +84,7 @@ func (c *Comment) ReadAll(threadID int64) (Comments, rest_errors.RestErr) {
 			logger.Error("error scanning item row into struct", err)
 			return nil, rest_errors.NewInternalServerError("Error parsing DB response", errors.New("DB error"))
 		}
+
 		res = append(res, comment)
 	}
 

@@ -8,12 +8,13 @@ const (
 )
 
 type Post struct {
-	ID          int64     `json:"id"`
-	Username    string    `json:"username"`
-	Title       string    `json:"tile"`
-	ContentType string    `json:"contenttype"`
-	Content     string    `json:"content"`
-	PostDate    time.Time `json:"postdate"`
+	ID        int64     `json:"id"`
+	Username  string    `json:"username"`
+	Title     string    `json:"title"`
+	Corpus    string    `json:"corpus"`
+	MediaType string    `json:"mediatype"`
+	Media     []byte    `json:"media"`
+	PostDate  time.Time `json:"postdate"`
 }
 
 type Posts []Post

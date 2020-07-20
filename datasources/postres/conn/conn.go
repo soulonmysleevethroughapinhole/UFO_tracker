@@ -43,6 +43,5 @@ func init() {
 	if err = DB.Ping(); err != nil {
 		panic(err)
 	}
-
 	log.Println(`Database successfully configured`)
 }

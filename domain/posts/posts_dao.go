@@ -2,22 +2,22 @@ package posts
 
 import (
 	"errors"
-	"fmt"	"strings"
+	"fmt"
+	"strings"
 
 	"github.com/soulonmysleevethroughapinhole/UFO_tracker/datasources/postres/conn"
 	"github.com/soulonmysleevethroughapinhole/UFO_tracker/utils/logger"
 	"github.com/soulonmysleevethroughapinhole/UFO_tracker/utils/rest_errors"
 )
 
-
 const (
 	errorNoRows = "no rows in result set"
 
-	queryCreatePost = ``
-	queryReadPost   = ``
-	queryReadAllPost   = ``
-	queryUpdatePost = ``
-	queryDeletePost = ``
+	queryCreatePost  = `INSERT INTO posts (username, title, corpus, mediatype, media) VALUES ($1, $2, $3, $4, $5) RETURNING id`
+	queryReadPost    = `SELECT username, title, corpus, mediatype, media, postdate FROM posts WHERE id=$1`
+	queryReadAllPost = `SELECT id, username, title, corpus, mediatype, postdate FROM posts`
+	queryUpdatePost  = ``
+	queryDeletePost  = ``
 )
 
 func (p *Post) Read() rest_errors.RestErr {
@@ -29,7 +29,7 @@ func (p *Post) Read() rest_errors.RestErr {
 	defer stmt.Close()
 
 	res := stmt.QueryRow(p.ID)
-	getErr := res.Scan(&p.Username, &p.Title, &p.ContentType, &p.Content, &p.PostDate)
+	getErr := res.Scan(&p.Username, &p.Title, &p.Corpus, &p.MediaType, &p.Media, &p.PostDate)
 	if getErr != nil {
 		if strings.Contains(getErr.Error(), "404") {
 			logger.Error("error getting item - not found", getErr)
@@ -49,7 +49,7 @@ func (p *Post) Create() rest_errors.RestErr {
 	}
 	defer stmt.Close()
 
-	saveErr := stmt.QueryRow(p.Username, p.Title, p.ContentType, p.Content)
+	saveErr := stmt.QueryRow(p.Username, p.Title, p.Corpus, p.MediaType, p.Media).Scan(&p.ID)
 	if saveErr != nil {
 		logger.Error("error saving item", saveErr)
 		return rest_errors.NewInternalServerError("Error saving item", errors.New("DB error"))
@@ -58,7 +58,7 @@ func (p *Post) Create() rest_errors.RestErr {
 }
 
 func (p *Post) Update() rest_errors.RestErr {
-	return nil	
+	return nil
 }
 
 func (p *Post) ReadAll() (Posts, rest_errors.RestErr) {
@@ -69,7 +69,7 @@ func (p *Post) ReadAll() (Posts, rest_errors.RestErr) {
 	}
 	defer stmt.Close()
 
-	rors, err := stmt.Query()
+	rows, err := stmt.Query()
 	if err != nil {
 		logger.Error("error selecting studio items", err)
 		return nil, rest_errors.NewInternalServerError("Error searching documents", errors.New("DB error"))
@@ -79,7 +79,7 @@ func (p *Post) ReadAll() (Posts, rest_errors.RestErr) {
 	res := make(Posts, 0)
 	for rows.Next() {
 		var post Post
-		if err := rows.Scan(&post.ID, &post.Username, &post.Title, &p.ContentType, &p.Content, &p.PostDate); err != nil {
+		if err := rows.Scan(&post.ID, &post.Username, &post.Title, &post.Corpus, &post.MediaType, &post.PostDate); err != nil {
 			logger.Error("error scanning item row into struct", err)
 			return nil, rest_errors.NewInternalServerError("Error parsing DB response", errors.New("DB error"))
 		}

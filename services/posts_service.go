@@ -18,11 +18,24 @@ type postServiceInterface interface {
 type postService struct{}
 
 func (s *postService) CreatePost(post posts.Post) (*posts.Post, rest_errors.RestErr) {
-	return nil, nil
+	// if err := post.Validate(); err != nil {
+	// 	return nil, err
+	// }
+
+	if err := post.Create(); err != nil {
+		return nil, err
+	}
+
+	return &post, nil
 }
 
 func (s *postService) ReadPost(ID int64) (*posts.Post, rest_errors.RestErr) {
-	return nil, nil
+	post := posts.Post{ID: ID}
+
+	if err := post.Read(); err != nil {
+		return nil, err
+	}
+	return &post, nil
 }
 
 func (s *postService) UpdatePost(post posts.Post) (*posts.Post, rest_errors.RestErr) {
@@ -35,5 +48,6 @@ func (s *postService) DeletePost(post posts.Post) (*posts.Post, rest_errors.Rest
 
 func (s *postService) ReadAllPosts() ([]posts.Post, rest_errors.RestErr) {
 	dao := &posts.Post{}
+
 	return dao.ReadAll()
 }
