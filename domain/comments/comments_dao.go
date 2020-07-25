@@ -13,11 +13,13 @@ import (
 const (
 	errorNoRows = "no rows in result set"
 
-	queryCreateComment         = `INSERT INTO comments (username, threadid, parentid, content) VALUES ($1, $2, $3, $4) RETURNING id`
-	queryReadComment           = `SELECT username, threadid, parentid, content, postdate FROM comments WHERE id = $1`
-	queryReadAllCommentsThread = `SELECT id, username, threadid, parentid, content, postdate `
-	queryUpdateComment         = ``
-	queryDeleteComment         = ``
+	queryCreateComment            = `INSERT INTO comments (username, threadid, parentid, content) VALUES ($1, $2, $3, $4) RETURNING id`
+	queryReadComment              = `SELECT username, threadid, parentid, content, postdate FROM comments WHERE id = $1`
+	queryReadTopLvlCommentsThread = `SELECT id, username, threadid, parentid, content, postdate, childrenamt FROM comments WHERE threadid=$1 AND parentid=0`
+	queryReadChildrenComments     = `SELECT id, username, threadid, parentid, content, postdate, childrenamt FROM comments WHERE parentid=$1 AND childrenamt=0`
+	queryIncrementParentChildren  = `UPDATE comments SET childrenamt = childrenamt+1 WHERE id=$1`
+	queryUpdateComment            = ``
+	queryDeleteComment            = ``
 )
 
 func (c *Comment) Read(commentID int64) rest_errors.RestErr {
@@ -49,11 +51,25 @@ func (c *Comment) Create() rest_errors.RestErr {
 	}
 	defer stmt.Close()
 
-	saveErr := stmt.QueryRow(c.Username, c.ThreadID, c.ParentID, c.Content).Scan(c.ID)
+	saveErr := stmt.QueryRow(c.Username, c.ThreadID, c.ParentID, c.Content).Scan(&c.ID)
 	if saveErr != nil {
 		logger.Error("error saving item", saveErr)
 		return rest_errors.NewInternalServerError("Error saving item", errors.New("DB error"))
 	}
+
+	stmtTwo, err := conn.DB.Prepare(queryIncrementParentChildren)
+	if err != nil {
+		logger.Error("error when trying to prepare save item statement", err)
+		return rest_errors.NewInternalServerError("Error saving item", errors.New("DB error"))
+	}
+	defer stmtTwo.Close()
+
+	_, updErr := stmtTwo.Exec(c.ParentID)
+	if updErr != nil {
+		logger.Error("error saving item", saveErr)
+		return rest_errors.NewInternalServerError("Error saving item", errors.New("DB error"))
+	}
+
 	return nil
 }
 
@@ -61,16 +77,27 @@ func (c *Comment) Update() rest_errors.RestErr {
 	return nil
 }
 
-func (c *Comment) ReadAll(threadID int64) (Comments, rest_errors.RestErr) {
+func (c *Comment) ReadAll(ID int64, level string) (Comments, rest_errors.RestErr) {
 	//case case case this shit
-	stmt, err := conn.DB.Prepare(queryReadAllCommentsThread)
+
+	var statement string
+	switch level {
+	case "toplvl":
+		statement = queryReadTopLvlCommentsThread
+	case "children":
+		statement = queryReadChildrenComments
+	default:
+		panic("faulty statement case")
+	}
+
+	stmt, err := conn.DB.Prepare(statement)
 	if err != nil {
 		logger.Error("error preparing studio statement for item", err)
 		return nil, rest_errors.NewInternalServerError("Error searching documents", errors.New("DB error"))
 	}
 	defer stmt.Close()
 
-	rows, err := stmt.Query(threadID)
+	rows, err := stmt.Query(ID)
 	if err != nil {
 		logger.Error("error selecting studio items", err)
 		return nil, rest_errors.NewInternalServerError("Error searching documents", errors.New("DB error"))
@@ -80,7 +107,7 @@ func (c *Comment) ReadAll(threadID int64) (Comments, rest_errors.RestErr) {
 	res := make(Comments, 0)
 	for rows.Next() {
 		var comment Comment
-		if err := rows.Scan(&c.ID, &c.Username, &c.ThreadID, &c.ParentID, &c.Content, &c.PostDate); err != nil {
+		if err := rows.Scan(&comment.ID, &comment.Username, &comment.ThreadID, &comment.ParentID, &comment.Content, &comment.PostDate, &comment.Children); err != nil {
 			logger.Error("error scanning item row into struct", err)
 			return nil, rest_errors.NewInternalServerError("Error parsing DB response", errors.New("DB error"))
 		}

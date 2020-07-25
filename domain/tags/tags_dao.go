@@ -2,6 +2,7 @@ package tags
 
 import (
 	"errors"
+	"log"
 
 	"github.com/soulonmysleevethroughapinhole/UFO_tracker/datasources/postres/conn"
 	"github.com/soulonmysleevethroughapinhole/UFO_tracker/utils/logger"
@@ -11,9 +12,9 @@ import (
 const (
 	errorNoRows = "no rows in result set"
 
-	queryCreateTagInd = `INSERT INTO tagcollection (username, `
-	queryUpsertTag    = ``
-	queryReadTagsPost = ``
+	queryCreateTagInd = `INSERT INTO tagscollection (username, targetpost, tagcontent) VALUES ($1, $2, $3) ON CONFLICT (username, targetpost, tagcontent) DO NOTHING returning id`
+	queryUpsertTag    = `INSERT INTO tags (postid, tagcontent) VALUES ($1, $2) ON CONFLICT (postid, tagcontent) DO NOTHING returning id`
+	queryReadTagsPost = `SELECT id, targetpost, tagcontent FROM tagscollection WHERE targetpost=$1`
 )
 
 //Read
@@ -32,18 +33,20 @@ func (t *TagInd) Create() rest_errors.RestErr {
 		return rest_errors.NewInternalServerError("Error saving item", errors.New("DB error"))
 	}
 
-	stmtTwo, err := conn.DB.Prepare(queryUpsertTag)
-	if err != nil {
-		logger.Error("error when trying to prepare save item statement", err)
-		return rest_errors.NewInternalServerError("Error saving item", errors.New("DB error"))
-	}
-	defer stmtTwo.Close()
+	// stmtTwo, err := conn.DB.Prepare(queryUpsertTag)
+	// if err != nil {
+	// 	logger.Error("error when trying to prepare save item statement", err)
+	// 	return rest_errors.NewInternalServerError("Error saving item", errors.New("DB error"))
+	// }
+	// defer stmtTwo.Close()
 
-	saveErrTwo := stmtTwo.QueryRow(t.TargetPost, t.TagContent).Scan()
-	if err != nil {
-		logger.Error("error saving item", saveErrTwo)
-		return rest_errors.NewInternalServerError("Error saving item", errors.New("DB error"))
-	}
+	// var ID int64
+	// saveErrTwo := stmtTwo.QueryRow(t.TargetPost, t.TagContent).Scan(&ID)
+	// if err != nil {
+	// 	logger.Error("error saving item", saveErrTwo)
+	// 	return rest_errors.NewInternalServerError("Error saving item", errors.New("DB error"))
+	// }
+	// log.Println(ID)
 
 	return nil
 }
@@ -56,7 +59,9 @@ func (t *Tag) ReadTagsPost(ID int64, username string) ([]Tag, rest_errors.RestEr
 	}
 	defer stmt.Close()
 
-	rows, err := stmt.Query(ID, username)
+	log.Println(username)
+
+	rows, err := stmt.Query(ID)
 	if err != nil {
 		logger.Error("error selecting studio items", err)
 		return nil, rest_errors.NewInternalServerError("Error searching documents", errors.New("DB error"))
@@ -66,17 +71,17 @@ func (t *Tag) ReadTagsPost(ID int64, username string) ([]Tag, rest_errors.RestEr
 	res := make([]Tag, 0)
 	for rows.Next() {
 		var tag Tag
-		username := ""
-		if err := rows.Scan(&tag.ID, &tag.PostID, &tag.TagContent, &tag.VoteAmt, username); err != nil {
+		// username := ""
+		if err := rows.Scan(&tag.ID, &tag.PostID, &tag.TagContent); err != nil {
 			logger.Error("error scanning item row into struct", err)
 			return nil, rest_errors.NewInternalServerError("Error parsing DB response", errors.New("DB error"))
 		}
 
-		if username == "" {
-			tag.HasVoted = false
-		} else {
-			tag.HasVoted = true
-		}
+		// if username == "" {
+		// 	tag.HasVoted = false
+		// } else {
+		// 	tag.HasVoted = true
+		// }
 
 		res = append(res, tag)
 	}

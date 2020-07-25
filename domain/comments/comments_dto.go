@@ -9,6 +9,7 @@ type Comment struct {
 	ParentID int64     `json:"parentid"`
 	Content  string    `json:"content"`
 	PostDate time.Time `json:"postdate"`
+	Children int64     `json:"children"`
 }
 
 type Comments []Comment

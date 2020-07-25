@@ -3,6 +3,7 @@ package controllers
 import (
 	"encoding/json"
 	"io/ioutil"
+	"log"
 	"net/http"
 
 	"github.com/soulonmysleevethroughapinhole/UFO_tracker/domain/tags"
@@ -40,6 +41,8 @@ func (c *tagController) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	tagRequest.Username = username
+
+	log.Println(tagRequest.TagContent)
 
 	res, createErr := services.TagService.CreateTag(tagRequest)
 	if createErr != nil {

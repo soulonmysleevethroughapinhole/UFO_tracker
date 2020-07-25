@@ -12,7 +12,7 @@ var (
 type commServiceInterface interface {
 	CreateComment(comment comments.Comment) (*comments.Comment, rest_errors.RestErr)
 	ReadComment(ID int64) (*comments.Comment, rest_errors.RestErr)
-	ReadCommentsThread(ID int64) ([]comments.Comment, rest_errors.RestErr)
+	ReadCommentsThread(ID int64, level string) ([]comments.Comment, rest_errors.RestErr)
 }
 
 type commService struct{}
@@ -35,8 +35,8 @@ func (s *commService) ReadComment(ID int64) (*comments.Comment, rest_errors.Rest
 	return &comm, nil
 }
 
-func (s *commService) ReadCommentsThread(ID int64) ([]comments.Comment, rest_errors.RestErr) {
+func (s *commService) ReadCommentsThread(ID int64, level string) ([]comments.Comment, rest_errors.RestErr) {
 	dao := &comments.Comment{}
 
-	return dao.ReadAll(ID)
+	return dao.ReadAll(ID, level)
 }

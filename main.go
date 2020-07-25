@@ -35,7 +35,7 @@ type ServerInformation struct {
 	Name        string `json:"name"`
 	Description string `json:"description"`
 	Image       string `json:"image"`
-	NumOfPeers  int    `json:peers`
+	NumOfPeers  int    `json:"peers"`
 }
 
 func main() {
@@ -63,6 +63,14 @@ func main() {
 	router.Post("/api/posts", controllers.PostsController.Create)
 	router.Put("/api/posts", controllers.PostsController.Update)
 	router.Delete("/api/posts/{id}", controllers.PostsController.Delete)
+
+	router.Get("/api/threadid/comments/{threadid}", controllers.CommController.GetAllTopLevel)
+	router.Get("/api/parentid/comments/{parentid}", controllers.CommController.GetAllChildren)
+	router.Post("/api/comments", controllers.CommController.Create)
+
+	router.Get("/api/tags/{threadid}", controllers.TagController.GetTagsPost)
+	router.Post("/api/tags", controllers.TagController.Create)
+
 	//returns all livesets
 	router.Get("/api/streams", func(w http.ResponseWriter, r *http.Request) {
 		keys := reflect.ValueOf(iw.Servers).MapKeys()

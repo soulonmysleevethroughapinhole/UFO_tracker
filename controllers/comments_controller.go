@@ -4,7 +4,9 @@ import (
 	"encoding/json"
 	"io/ioutil"
 	"net/http"
+	"strconv"
 
+	"github.com/go-chi/chi"
 	"github.com/soulonmysleevethroughapinhole/UFO_tracker/domain/comments"
 	"github.com/soulonmysleevethroughapinhole/UFO_tracker/services"
 	"github.com/soulonmysleevethroughapinhole/UFO_tracker/utils/http_utils"
@@ -18,7 +20,8 @@ var (
 type commControllerInterface interface {
 	Create(w http.ResponseWriter, r *http.Request)
 	//Get(w http.ResponseWriter, r *http.Request)
-	GetAll(w http.ResponseWriter, r *http.Request)
+	GetAllTopLevel(w http.ResponseWriter, r *http.Request)
+	GetAllChildren(w http.ResponseWriter, r *http.Request)
 }
 
 type commController struct{}
@@ -52,8 +55,32 @@ func (c *commController) Create(w http.ResponseWriter, r *http.Request) {
 	http_utils.RespondJson(w, http.StatusCreated, res)
 }
 
-func (c *commController) GetAll(w http.ResponseWriter, r *http.Request) {
-	comms, getErr := services.CommService.ReadCommentsThread(1)
+func (c *commController) GetAllTopLevel(w http.ResponseWriter, r *http.Request) {
+	threadID, err := strconv.ParseInt(chi.URLParam(r, "threadid"), 10, 64)
+	if err != nil {
+		respErr := rest_errors.NewBadRequestError("invalid request body")
+		http_utils.RespondError(w, respErr)
+		return
+	}
+
+	comms, getErr := services.CommService.ReadCommentsThread(threadID, "toplvl")
+	if getErr != nil {
+		http_utils.RespondError(w, getErr)
+		return
+	}
+
+	http_utils.RespondJson(w, http.StatusOK, comms)
+}
+
+func (c *commController) GetAllChildren(w http.ResponseWriter, r *http.Request) {
+	parentID, err := strconv.ParseInt(chi.URLParam(r, "parentid"), 10, 64)
+	if err != nil {
+		respErr := rest_errors.NewBadRequestError("invalid request body")
+		http_utils.RespondError(w, respErr)
+		return
+	}
+
+	comms, getErr := services.CommService.ReadCommentsThread(parentID, "children")
 	if getErr != nil {
 		http_utils.RespondError(w, getErr)
 		return
